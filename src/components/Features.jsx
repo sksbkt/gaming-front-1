@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { TiLocationArrow } from "react-icons/ti";
+import { isMobile } from "../utils/functions";
 
 /* eslint-disable react/prop-types */
 
@@ -13,7 +14,6 @@ const BentoTilt = ({ children, className = "" }) => {
       itemRef.current.getBoundingClientRect();
     const relativeX = (e.clientX - left) / width;
     const relativeY = (e.clientY - top) / height;
-    const isMobile = window.screen.width < 720;
 
     const tiltX = (relativeY - 0.5) * (isMobile ? 5 : 15);
     const tiltY = (relativeX - 0.5) * -(isMobile ? 5 : 15);
@@ -134,7 +134,7 @@ const Features = () => {
           </BentoTilt>
           <BentoTilt className="bento-tilt_2">
             <video
-              src="/public/videos/feature-5.mp4"
+              src="videos/feature-5.mp4"
               loop
               muted
               autoPlay
