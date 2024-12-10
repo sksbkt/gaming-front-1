@@ -10,8 +10,6 @@ const AnimatedTitle = ({ title, containerClass }) => {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      console.log(containerRef.current);
-
       const titleAnimation = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,

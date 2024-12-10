@@ -19,8 +19,6 @@ const Hero = () => {
   const nextVideoRef = useRef(null);
 
   const handleVideoLoad = () => {
-    console.log(currentIndex);
-
     setLoadedVideos((prev) => prev + 1);
   };
   // ? modulo operator is used to ensure that the index wraps around to 1 after reaching the total number of videos
@@ -29,7 +27,6 @@ const Hero = () => {
   const handleMiniVdClick = () => {
     setHasClicked(true);
     setCurrentIndex(upcomingVideoIndex);
-    console.log(upcomingVideoIndex);
   };
 
   useEffect(() => {
