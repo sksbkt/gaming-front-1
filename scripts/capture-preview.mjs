@@ -104,6 +104,7 @@ async function ensureServerRunning() {
   const serverProcess = spawn(runCommand, {
     stdio: ["ignore", "pipe", "pipe"],
     shell: true,
+    detached: process.platform !== "win32",
     env: { ...process.env, PORT: "3000", HOST: "0.0.0.0" },
   });
 
@@ -280,8 +281,16 @@ async function main() {
   } finally {
     if (server?.process) {
       console.log("[Visual Capture] Stopping background server process...");
-      server.process.kill("SIGTERM");
+      try {
+        if (process.platform !== "win32" && server.process.pid) {
+          process.kill(-server.process.pid, "SIGKILL");
+        } else {
+          server.process.kill("SIGKILL");
+        }
+      } catch {}
     }
+    console.log("[Visual Capture] Execution completed successfully.");
+    process.exit(0);
   }
 }
 
