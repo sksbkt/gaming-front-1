@@ -38,22 +38,52 @@ function detectServerScript() {
 /**
  * Polls candidate ports until local server responds
  */
-async function waitForAnyServer(candidatePorts = [3000, 5173, 8080, 8000, 4173], timeoutMs = MAX_WAIT_MS) {
+/**
+ * Probes a specific URL using GET to determine if a server is listening
+ */
+async function probeUrl(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1500);
+    const res = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { Accept: "text/html,*/*" },
+    });
+    clearTimeout(timer);
+    if (res.ok || res.status < 500) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Polls candidate ports and hosts until local server responds
+ */
+async function waitForAnyServer(candidatePorts = [5173, 3000, 4173, 8080, 8000], timeoutMs = MAX_WAIT_MS, dynamicPortRef = { port: null }) {
   const start = Date.now();
   console.log("[Visual Capture] Probing for active local server...");
 
+  const candidateHosts = ["localhost", "127.0.0.1"];
+
   while (Date.now() - start < timeoutMs) {
-    for (const port of candidatePorts) {
-      try {
-        const url = `http://127.0.0.1:${port}/`;
-        const res = await fetch(url, { method: "HEAD" });
-        if (res.ok || res.status < 500) {
-          console.log(`[Visual Capture] Discovered responsive server at ${url} (Status ${res.status})`);
+    const ports = dynamicPortRef.port && !candidatePorts.includes(dynamicPortRef.port)
+      ? [dynamicPortRef.port, ...candidatePorts]
+      : dynamicPortRef.port
+      ? [dynamicPortRef.port, ...candidatePorts.filter((p) => p !== dynamicPortRef.port)]
+      : candidatePorts;
+
+    for (const port of ports) {
+      for (const host of candidateHosts) {
+        const url = `http://${host}:${port}/`;
+        if (await probeUrl(url)) {
+          console.log(`[Visual Capture] Discovered responsive server at ${url}`);
           return url;
         }
-      } catch {}
+      }
     }
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 800));
   }
 
   return null;
@@ -63,19 +93,36 @@ async function waitForAnyServer(candidatePorts = [3000, 5173, 8080, 8000, 4173],
  * Spawns the web project dev/start server if not already running
  */
 async function ensureServerRunning() {
-  let activeUrl = await waitForAnyServer([3000, 5173, 8080, 8000], 3000);
+  const dynamicPortRef = { port: null };
+
+  let activeUrl = await waitForAnyServer([5173, 3000, 4173, 8080, 8000], 3000, dynamicPortRef);
   if (activeUrl) return { url: activeUrl, process: null };
 
   const runCommand = detectServerScript();
   console.log(`[Visual Capture] Spawning server process with "${runCommand}"...`);
 
   const serverProcess = spawn(runCommand, {
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
     shell: true,
-    env: { ...process.env, PORT: "3000" },
+    env: { ...process.env, PORT: "3000", HOST: "0.0.0.0" },
   });
 
-  activeUrl = await waitForAnyServer([3000, 5173, 8080, 8000, 4173], MAX_WAIT_MS);
+  const onOutput = (data) => {
+    const text = data.toString();
+    process.stdout.write(text);
+    const match = text.match(/https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]):(\d+)/i);
+    if (match && match[1]) {
+      const parsedPort = Number.parseInt(match[1], 10);
+      if (!Number.isNaN(parsedPort)) {
+        dynamicPortRef.port = parsedPort;
+      }
+    }
+  };
+
+  serverProcess.stdout.on("data", onOutput);
+  serverProcess.stderr.on("data", onOutput);
+
+  activeUrl = await waitForAnyServer([5173, 3000, 4173, 8080, 8000], MAX_WAIT_MS, dynamicPortRef);
   if (!activeUrl) {
     serverProcess.kill("SIGTERM");
     throw new Error("[Visual Capture] Web server failed to start within timeout.");
@@ -166,8 +213,9 @@ async function main() {
 
     const page = await desktopContext.newPage();
     console.log(`[Visual Capture] Navigating to root (${targetUrl})...`);
-    await page.goto(targetUrl, { waitUntil: "networkidle", timeout: 45_000 });
-    await page.waitForTimeout(1000);
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await page.waitForLoadState("load").catch(() => {});
+    await page.waitForTimeout(2000);
 
     // Capture Hero / Above-the-fold
     console.log("[Visual Capture] Saving hero.png...");
@@ -200,8 +248,9 @@ async function main() {
     });
 
     const mobilePage = await mobileContext.newPage();
-    await mobilePage.goto(targetUrl, { waitUntil: "networkidle", timeout: 30_000 });
-    await mobilePage.waitForTimeout(600);
+    await mobilePage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await mobilePage.waitForLoadState("load").catch(() => {});
+    await mobilePage.waitForTimeout(1000);
     await mobilePage.screenshot({
       path: path.join(OUTPUT_DIR, "mobile.png"),
       fullPage: false,
