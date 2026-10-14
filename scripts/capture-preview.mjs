@@ -4,17 +4,20 @@
  * Works with any web framework (Next.js, Vite, React, Vue, Svelte, Astro, HTML).
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { spawn, execSync } from "node:child_process";
 import path from "node:path";
 
 const OUTPUT_DIR = path.resolve(process.cwd(), "assets");
 const TEMP_VIDEO_DIR = path.resolve(process.cwd(), ".temp-video");
+const DESKTOP_VIDEO_DIR = path.join(TEMP_VIDEO_DIR, "desktop");
+const MOBILE_VIDEO_DIR = path.join(TEMP_VIDEO_DIR, "mobile");
 const MAX_WAIT_MS = 60_000;
 
 // Ensure output directories exist
 if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
-if (!existsSync(TEMP_VIDEO_DIR)) mkdirSync(TEMP_VIDEO_DIR, { recursive: true });
+if (!existsSync(DESKTOP_VIDEO_DIR)) mkdirSync(DESKTOP_VIDEO_DIR, { recursive: true });
+if (!existsSync(MOBILE_VIDEO_DIR)) mkdirSync(MOBILE_VIDEO_DIR, { recursive: true });
 
 /**
  * Detect available run script from package.json
@@ -163,10 +166,10 @@ async function smoothScrollPage(page) {
 /**
  * Exports WebM video to an optimized animated GIF with two-pass palette generation
  */
-function convertToOptimizedGif(inputVideoPath, outputGifPath) {
-  console.log(`[Visual Capture] Converting ${inputVideoPath} to optimized GIF via FFmpeg...`);
+function convertToOptimizedGif(inputVideoPath, outputGifPath, scaleWidth = 960) {
+  console.log(`[Visual Capture] Converting ${inputVideoPath} to optimized GIF (${scaleWidth}px) via FFmpeg...`);
   try {
-    const filter = "fps=14,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:reserve_transparent=0[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3";
+    const filter = `fps=14,scale=${scaleWidth}:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:reserve_transparent=0[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3`;
     execSync(`ffmpeg -y -i "${inputVideoPath}" -vf "${filter}" "${outputGifPath}"`, {
       stdio: "inherit",
     });
@@ -174,7 +177,7 @@ function convertToOptimizedGif(inputVideoPath, outputGifPath) {
   } catch (err) {
     console.warn("[Visual Capture] Standard FFmpeg palette failed, running fallback...", err.message);
     try {
-      execSync(`ffmpeg -y -i "${inputVideoPath}" -vf "fps=12,scale=800:-1" "${outputGifPath}"`, {
+      execSync(`ffmpeg -y -i "${inputVideoPath}" -vf "fps=12,scale=${scaleWidth}:-1" "${outputGifPath}"`, {
         stdio: "inherit",
       });
       console.log(`[Visual Capture] Fallback GIF created: ${outputGifPath}`);
@@ -203,17 +206,18 @@ async function main() {
     });
 
     // 1. Desktop Viewport with Video Recording
+    console.log("[Visual Capture] Starting desktop recording (1440x900)...");
     const desktopContext = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 2,
       recordVideo: {
-        dir: TEMP_VIDEO_DIR,
+        dir: DESKTOP_VIDEO_DIR,
         size: { width: 1280, height: 800 },
       },
     });
 
     const page = await desktopContext.newPage();
-    console.log(`[Visual Capture] Navigating to root (${targetUrl})...`);
+    console.log(`[Visual Capture] Navigating desktop to root (${targetUrl})...`);
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.waitForLoadState("load").catch(() => {});
     await page.waitForTimeout(2000);
@@ -225,8 +229,8 @@ async function main() {
       fullPage: false,
     });
 
-    // Scroll to trigger all CSS & JS animations
-    console.log("[Visual Capture] Scrolling to trigger animations & lazy assets...");
+    // Scroll desktop to trigger all CSS & JS animations
+    console.log("[Visual Capture] Scrolling desktop to trigger animations & lazy assets...");
     await smoothScrollPage(page);
 
     // Capture Full Page
@@ -239,42 +243,73 @@ async function main() {
     await page.close();
     await desktopContext.close();
 
-    // 2. Mobile Viewport (iPhone 14)
-    console.log("[Visual Capture] Capturing mobile.png...");
+    // 2. Mobile Viewport (iPhone 14) with Video Recording
+    console.log("[Visual Capture] Starting mobile recording (390x844)...");
     const mobileContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 2,
       isMobile: true,
       hasTouch: true,
+      recordVideo: {
+        dir: MOBILE_VIDEO_DIR,
+        size: { width: 390, height: 844 },
+      },
     });
 
     const mobilePage = await mobileContext.newPage();
+    console.log(`[Visual Capture] Navigating mobile to root (${targetUrl})...`);
     await mobilePage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await mobilePage.waitForLoadState("load").catch(() => {});
     await mobilePage.waitForTimeout(1000);
+
+    // Capture Mobile Screenshot
+    console.log("[Visual Capture] Capturing mobile.png...");
     await mobilePage.screenshot({
       path: path.join(OUTPUT_DIR, "mobile.png"),
       fullPage: false,
     });
 
+    // Scroll mobile to record animations in mobile GIF
+    console.log("[Visual Capture] Scrolling mobile view for GIF recording...");
+    await smoothScrollPage(mobilePage);
+
     await mobilePage.close();
     await mobileContext.close();
     await browser.close();
 
-    // 3. Convert Video to Animated GIF
-    const recordedVideos = existsSync(TEMP_VIDEO_DIR) ? readdirSync(TEMP_VIDEO_DIR) : [];
-    const videoFile = recordedVideos.find((f) => f.endsWith(".webm") || f.endsWith(".mp4"));
+    // 3. Convert Recorded Videos to Animated GIFs (Desktop & Mobile)
+    const findVideo = (dir) => {
+      if (!existsSync(dir)) return null;
+      const files = readdirSync(dir);
+      const match = files.find((f) => f.endsWith(".webm") || f.endsWith(".mp4"));
+      return match ? path.join(dir, match) : null;
+    };
 
-    if (videoFile) {
-      const inputVideo = path.join(TEMP_VIDEO_DIR, videoFile);
-      const outputGif = path.join(OUTPUT_DIR, "preview.gif");
-      convertToOptimizedGif(inputVideo, outputGif);
+    // 3a. Generate Desktop GIF
+    const desktopVideo = findVideo(DESKTOP_VIDEO_DIR);
+    if (desktopVideo) {
+      const desktopGif = path.join(OUTPUT_DIR, "preview-desktop.gif");
+      const defaultPreviewGif = path.join(OUTPUT_DIR, "preview.gif");
+      convertToOptimizedGif(desktopVideo, desktopGif, 960);
       try {
-        unlinkSync(inputVideo);
+        copyFileSync(desktopGif, defaultPreviewGif);
+        unlinkSync(desktopVideo);
       } catch {}
     }
 
-    console.log("[Visual Capture] All visual assets successfully generated in ./assets/!");
+    // 3b. Generate Mobile GIF
+    const mobileVideo = findVideo(MOBILE_VIDEO_DIR);
+    if (mobileVideo) {
+      const mobileGif = path.join(OUTPUT_DIR, "preview-mobile.gif");
+      const mobileGifAlias = path.join(OUTPUT_DIR, "mobile.gif");
+      convertToOptimizedGif(mobileVideo, mobileGif, 400);
+      try {
+        copyFileSync(mobileGif, mobileGifAlias);
+        unlinkSync(mobileVideo);
+      } catch {}
+    }
+
+    console.log("[Visual Capture] All visual assets (Desktop & Mobile screenshots + GIFs) successfully generated in ./assets/!");
   } catch (error) {
     console.error("[Visual Capture] Runner failed:", error);
     process.exit(1);
