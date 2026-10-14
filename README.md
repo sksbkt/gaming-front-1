@@ -1,82 +1,78 @@
-# 🎮 Gaming Frontend
+# 🎮 Gaming Frontend (Awards)
 
-A modern gaming platform frontend built with **Next.js, React, TypeScript, and Tailwind CSS**.
-
----
-
-## 📌 Overview
-
-**Gaming Frontend** is a modern and responsive web application designed for gaming platforms. The project focuses on performance, scalability, and an engaging user experience by leveraging the latest frontend technologies.
-
-It includes reusable components, optimized state management, API integration, and a clean UI architecture suitable for production applications.
+A modern gaming platform frontend built with **React, Vite, Tailwind CSS, and GSAP**.
 
 ---
 
-[🔗 Live Demo](https://quanticgame.netlify.app/)
+## 📌 Overview / بررسی اجمالی
+
+**English:**  
+Gaming Frontend is a modern and responsive web application designed for gaming platforms, emphasizing rich animations, performance, and engaging user experiences using GSAP and Tailwind CSS.
+
+**فارسی:**  
+فرانت‌اند پلتفرم بازی یک وب‌اپلیکیشن مدرن و واکنش‌گرا است که برای پلتفرم‌های گیمینگ طراحی شده و بر انیمیشن‌های غنی، کارایی بالا و تجربه کاربری جذاب با استفاده از GSAP و Tailwind CSS تمرکز دارد.
 
 ---
 
-## 🚀 Features
+## 🚀 Features / ویژگی‌ها
 
-- ⚡ Built with **Next.js** for fast rendering and SEO optimization
-- 🎨 Modern UI with **Tailwind CSS**
-- 🧩 Reusable and modular React components
-- 📱 Fully responsive design
-- 🔄 API integration
-- 🛠️ Type-safe development with **TypeScript**
-- 📦 Scalable project architecture
-- 🌙 Dark mode support (if applicable)
+- ⚡ Powered by **Vite** for ultra-fast builds and HMR
+- 🎨 Modern UI styling with **Tailwind CSS**
+- ✨ Smooth scroll and animations via **GSAP** & `@gsap/react`
+- 🧩 Modular and reusable React components
+- 📱 Fully responsive design for all screen sizes
+- 🔄 Data fetching using **SWR**
+- 📦 Progressive Web App (PWA) support
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack / فناوری‌های استفاده شده
 
 | Category | Technology |
 |----------|------------|
-| Framework | Next.js |
-| Library | React |
-| Language | TypeScript |
+| Bundler/Build Tool | Vite |
+| Library | React 18 |
 | Styling | Tailwind CSS |
-| Data Fetching | Axios |
-| State Management | Redux Toolkit / Context API |
-| Package Manager | npm |
+| Animations | GSAP (GreenSock) |
+| Data Fetching | SWR |
+| Icons | React Icons |
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Structure / ساختار پروژه
 
 ```text
-gaming-front-1/
+awards/
 ├── public/
 ├── src/
-│   ├── app/
 │   ├── components/
-│   ├── hooks/
-│   ├── services/
-│   ├── store/
-│   ├── styles/
-│   ├── types/
-│   └── utils/
+│   │   ├── About.jsx
+│   │   ├── AnimatedTitle.jsx
+│   │   ├── Button.jsx
+│   │   ├── Contact.jsx
+│   │   ├── Features.jsx
+│   │   ├── Footer.jsx
+│   │   ├── Hero.jsx
+│   │   ├── NavBar.jsx
+│   │   └── RoundedCorner.jsx
+│   ├── utils/
+│   ├── App.jsx
+│   ├── index.css
+│   └── main.jsx
 ├── package.json
-├── tsconfig.json
-├── next.config.js
-└── README.md
+├── tailwind.config.js
+└── vite.config.js
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Installation / نصب و راه‌اندازی
 
-Clone the repository:
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/sksbkt/gaming-front-1.git
 cd gaming-front-1
-```
-
-Install dependencies:
-
-```bash
 npm install
 ```
 
@@ -89,39 +85,28 @@ npm run dev
 Open your browser and visit:
 
 ```
-http://localhost:3000
+http://localhost:5173
 ```
 
 ---
 
-## 📜 Available Scripts
+## 📜 Available Scripts / دستورات اجرایی
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Create production build |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
+| `npm run dev` | Start Vite development server |
+| `npm run build` | Create production bundle |
+| `npm run lint` | Run ESLint check |
+| `npm run preview` | Preview production build locally |
 
 ---
 
-## 🎯 Goals
+## 👨‍💻 Author / سازنده
 
-- Fast loading performance
-- Responsive UI
-- SEO-friendly pages
-- Reusable component architecture
-- Clean and maintainable codebase
+- GitHub: [@sksbkt](https://github.com/sksbkt)
 
 ---
 
-
-## 👨‍💻 Author
-
-- GitHub: https://github.com/sksbkt
-
----
-
-## ⭐ Support
+## ⭐ Support / پشتیبانی
 
 If you found this project useful, please consider giving it a ⭐ on GitHub!
