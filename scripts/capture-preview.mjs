@@ -194,10 +194,20 @@ async function main() {
   const chromium = pw.chromium;
 
   let server = null;
+  let targetUrl = null;
 
   try {
-    server = await ensureServerRunning();
-    const targetUrl = server.url;
+    const liveTargetUrl = process.env.TARGET_URL && process.env.TARGET_URL.trim().length > 0
+      ? process.env.TARGET_URL.trim()
+      : (process.argv[2] && process.argv[2].startsWith("http") ? process.argv[2].trim() : null);
+
+    if (liveTargetUrl) {
+      console.log(`[Visual Capture] Direct live target URL provided: ${liveTargetUrl}. Bypassing local dev server startup.`);
+      targetUrl = liveTargetUrl;
+    } else {
+      server = await ensureServerRunning();
+      targetUrl = server.url;
+    }
 
     console.log(`[Visual Capture] Launching Chromium to capture: ${targetUrl}`);
     const browser = await chromium.launch({
